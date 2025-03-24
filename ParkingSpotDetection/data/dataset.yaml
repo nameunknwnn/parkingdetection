@@ -1,0 +1,7 @@
+names: 
+  0: car
+  1: disabled
+  2: available
+path: C:\Coding\ParkingSpotDetectionTemp\YOLO-Parking-Spot\data
+train: C:\Coding\ParkingSpotDetectionTemp\YOLO-Parking-Spot\data\train.txt
+val: C:\Coding\ParkingSpotDetectionTemp\YOLO-Parking-Spot\data\val.txt
