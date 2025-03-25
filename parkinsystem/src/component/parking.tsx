@@ -65,44 +65,77 @@ export default function ParkingAnalyzer() {
       }
       
       // Set the results
-      setProcessedImage(`${API_URL}/${data.processed_image}`);
+      if (data.image_path) {
+        setProcessedImage(`${API_URL}/${data.image_path}`);
+      }
       
-      // Group empty spots by section
-      const groupedSlots = data.empty_spots.reduce((acc, spot) => {
-        // For your data format, derive a section from the first character/digit
-        const section = spot.charAt(0);
-        if (!acc[section]) {
-          acc[section] = [];
+      // Check the structure of empty_spots
+      if (Array.isArray(data.empty_spots)) {
+        // If empty_spots is already an array of objects with section info
+        if (data.empty_spots.length > 0 && data.empty_spots[0].section) {
+          // Group by section
+          const groupedBySection = data.empty_spots.reduce((acc, spot) => {
+            const section = spot.section;
+            if (!acc[section]) {
+              acc[section] = [];
+            }
+            acc[section].push(spot);
+            return acc;
+          }, {});
+          
+          setEmptySlots(Object.entries(groupedBySection).map(([section, slots]) => ({
+            section,
+            slots
+          })));
+        } else {
+          // If empty_spots is an array of strings (spot IDs)
+          const groupedSlots = data.empty_spots.reduce((acc, spot) => {
+            // For simple string values, get the first character as section
+            const spotId = typeof spot === 'string' ? spot : spot.id;
+            const section = spotId.substring(0, 1);
+            
+            if (!acc[section]) {
+              acc[section] = [];
+            }
+            acc[section].push({
+              id: spotId,
+              section: section,
+              status: 'empty'
+            });
+            return acc;
+          }, {});
+          
+          setEmptySlots(Object.entries(groupedSlots).map(([section, slots]) => ({
+            section,
+            slots
+          })));
         }
-        acc[section].push({
-          id: spot,
-          section: section,
-          status: 'empty'
-        });
-        return acc;
-      }, {});
-      
-      setEmptySlots(Object.entries(groupedSlots).map(([section, slots]) => ({
-        section,
-        slots
-      })));
+      } else {
+        setEmptySlots([]);
+      }
       
       // Set statistics
       setStats({
-        totalSpots: data.total_spots,
-        totalEmpty: data.total_empty,
-        totalOccupied: data.total_occupied
+        totalSpots: data.total_spots || 0,
+        totalEmpty: data.available_spots || 0,
+        totalOccupied: (data.total_spots || 0) - (data.available_spots || 0)
       });
       
       // For demonstration, set random positions for empty slot markers
       // In a real app, you would use actual coordinates from the backend
-      setEmptySlotPositions(
-        data.empty_spots.slice(0, 5).map((spot) => ({
-          id: spot,
-          top: `${Math.floor(Math.random() * 80) + 10}%`,
-          left: `${Math.floor(Math.random() * 80) + 10}%`
-        }))
-      );
+      if (Array.isArray(data.empty_spots)) {
+        const spotIds = data.empty_spots.map(spot => 
+          typeof spot === 'string' ? spot : spot.id
+        );
+        
+        setEmptySlotPositions(
+          spotIds.slice(0, 5).map((spot) => ({
+            id: spot,
+            top: `${Math.floor(Math.random() * 80) + 10}%`,
+            left: `${Math.floor(Math.random() * 80) + 10}%`
+          }))
+        );
+      }
       
     } catch (err) {
       console.error("Analysis error:", err);
@@ -166,15 +199,7 @@ export default function ParkingAnalyzer() {
                   {/* Image overlay markers for empty spots */}
                   {emptySlotPositions.length > 0 && !analyzing && (
                     <>
-                      {emptySlotPositions.map((spot) => (
-                        <div 
-                          key={spot.id}
-                          className="absolute h-12 w-20 border-2 border-green-500 bg-green-200 bg-opacity-40 rounded-md flex items-center justify-center"
-                          style={{ top: spot.top, left: spot.left }}
-                        >
-                          <span className="text-green-800 font-bold">{spot.id}</span>
-                        </div>
-                      ))}
+                    
                     </>
                   )}
                 </div>
